@@ -22,12 +22,18 @@ def _literal_str(dumper, data):
 
 LiteralDumper.add_representer(str, _literal_str)
 
-mcp = FastMCP("DuckDuckGoSearch")
+def load_config(path: Path = Path(__file__).parent / "config.yaml") -> dict:
+    with open(path) as f:
+        return yaml.safe_load(f)
 
-LOCAL_LLM_BASE = "http://127.0.0.1:8080"
-default_page_max_char_length = 16000
-LOG_FILE = Path(__file__).parent / "debug_log/log.yaml"
-LOG_MAX_BYTES = 2 * 1024 * 1024  # 2 MB
+CONFIG = load_config()
+
+mcp = FastMCP(CONFIG["server"]["name"])
+
+LOCAL_LLM_BASE = CONFIG["local_llm"]["base_url"]
+default_page_max_char_length = CONFIG["fetch"]["page_max_char_length"]
+LOG_FILE = Path(__file__).parent / CONFIG["logging"]["file"]
+LOG_MAX_BYTES = CONFIG["logging"]["max_bytes"]
 
 
 def log_call(tool: str, params: dict, mcp_response: str, fetched_pages: list = None, llm_responses: list = None, error: str = None):
@@ -58,7 +64,7 @@ def log_call(tool: str, params: dict, mcp_response: str, fetched_pages: list = N
 
 
 def get_local_llm_model() -> str:
-    response = httpx.get(f"{LOCAL_LLM_BASE}/v1/models", timeout=5.0)
+    response = httpx.get(f"{LOCAL_LLM_BASE}/v1/models", timeout=CONFIG["local_llm"]["models_timeout"])
     return response.json()["data"][0]["id"]
 
 
@@ -81,9 +87,9 @@ PAGE CONTENT:>>>
         json={
             "model": get_local_llm_model(),
             "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 1024 * 8,
+            "max_tokens": CONFIG["local_llm"]["max_tokens"],
         },
-        timeout=60.0 * 5,
+        timeout=CONFIG["local_llm"]["completion_timeout"],
     )
     raw = response.json()
     filtered = raw["choices"][0]["message"]["content"].strip()
@@ -95,7 +101,7 @@ async def fetch_and_convert_async(
 ) -> tuple[str, str, dict | None]:
     """Returns (mcp_result, raw_page_md, llm_raw_json_or_None)."""
     try:
-        response = await client.get(url, timeout=30.0, follow_redirects=True)
+        response = await client.get(url, timeout=CONFIG["fetch"]["timeout"], follow_redirects=True)
         content_md = md(response.text)
         raw_page_md = "\n".join(
             [line for line in content_md.splitlines() if line.strip()][:default_page_max_char_length]
@@ -160,7 +166,7 @@ def fetch_and_convert(url: str = "", title: str = "", query: str = "") -> str:
 
 
 @mcp.tool()
-def search_web(query: str, max_results: int = 5) -> str:
+def search_web(query: str, max_results: int = CONFIG["search"]["default_max_results"]) -> str:
     """
     Search the Internet using DuckDuckGo.
     Fetches each result page and filters content through a local LLM before returning.
@@ -191,7 +197,7 @@ if __name__ == "__main__":
     cors_middleware = [
         Middleware(
             CORSMiddleware,
-            allow_origins=["http://127.0.0.1:8080", "http://localhost:8080"],
+            allow_origins=CONFIG["server"]["cors_allow_origins"],
             allow_methods=["*"],
             allow_headers=["*"],
         )
@@ -199,8 +205,8 @@ if __name__ == "__main__":
 
     mcp.run(
         transport="http",
-        host="127.0.0.1",
-        port=8325,
-        path="/mcp",
+        host=CONFIG["server"]["host"],
+        port=CONFIG["server"]["port"],
+        path=CONFIG["server"]["path"],
         middleware=cors_middleware,
     )

@@ -1,0 +1,25 @@
+server:
+  name: DuckDuckGoSearch
+  host: 127.0.0.1
+  port: 8325
+  path: /mcp
+  cors_allow_origins:
+    - http://127.0.0.1:8080
+    - http://localhost:8080
+
+local_llm:
+  base_url: http://127.0.0.1:8080
+  max_tokens: 8192          # 1024 * 8
+  models_timeout: 5.0       # seconds, GET /v1/models
+  completion_timeout: 300.0 # seconds, POST /v1/chat/completions
+
+fetch:
+  timeout: 30.0             # seconds, per-page GET
+  page_max_char_length: 16000
+
+search:
+  default_max_results: 5
+
+logging:
+  file: debug_log/log.yaml
+  max_bytes: 2097152        # 2 * 1024 * 1024 (2 MB)
