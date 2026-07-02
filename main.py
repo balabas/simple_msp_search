@@ -2,7 +2,7 @@ from fastmcp import FastMCP
 from starlette.middleware import Middleware
 from starlette.middleware.cors import CORSMiddleware
 from ddgs import DDGS
-import trafilatura
+
 import httpx
 from markdownify import markdownify as md
 import asyncio

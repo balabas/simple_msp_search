@@ -1,7 +1,6 @@
 fastmcp==3.2.4
 starlette==1.0.0
 ddgs==9.14.2
-trafilatura==2.0.0
 httpx==0.28.1
 markdownify==1.2.2
 PyYAML==6.0.3
